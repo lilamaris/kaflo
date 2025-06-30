@@ -2,8 +2,11 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "UI Builder",
-  description: "UI Builder",
+  icons: {
+    icon: "/logo.svg",
+  },
+  title: "Kaflo",
+  description: "Make your unique portfolio website with Kaflo",
 };
 
 export default function RootLayout({
