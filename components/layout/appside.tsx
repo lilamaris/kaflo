@@ -23,17 +23,6 @@ export default function AppSidebar({
           <SidebarGroupLabel>Components</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {/* {widgets.map((widget) => (
-                <SidebarMenuItem key={widget.description}>
-                  <WidgetPreview
-                    widget={widget.widget}
-                    Icon={widget.Icon}
-                    description={widget.description}
-                  />
-                </SidebarMenuItem>
-              ))} */}
-            </SidebarMenu>
-            <SidebarMenu>
               <SidebarMenuItem>
                 <Widget descriptor={BlockDescriptor} />
               </SidebarMenuItem>
