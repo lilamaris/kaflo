@@ -363,7 +363,7 @@ export default function WidgetWrapper(props: WidgetWrapperProps) {
             "transition-all duration-200",
             isDragging && "rounded-lg bg-muted/20 border border-green-500",
             isOver && "rounded-lg border-blue-500 border bg-blue-500/10",
-            isChildrenOver && "scale-95"
+            isChildrenOver && "scale-90"
           )}
           state={widget}
           attributes={attributes}

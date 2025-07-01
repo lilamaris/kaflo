@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { Bookmark, Dot, LayoutGrid } from "lucide-react";
+import { Bookmark, LayoutGrid } from "lucide-react";
 
 import { cn, getLayoutStyle } from "@/lib/utils";
 import { useWidgetTreeStore } from "@/components/providers/widget-tree-store-provider";
