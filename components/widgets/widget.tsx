@@ -54,13 +54,48 @@ function WidgetPreview({
   );
 }
 
+export function WidgetControlHeader({
+  dragConnector,
+  componentProps,
+}: {
+  dragConnector: ConnectDragSource;
+  componentProps: WidgetProps;
+}) {
+  const { removeWidget } = useWidgetTreeStore((state) => state);
+  const { showDebug } = useUIInspectStore((state) => state);
+
+  const dragRef = React.useRef<HTMLDivElement>(null);
+  dragConnector(dragRef);
+
+  return (
+    <div
+      ref={dragRef}
+      className="select-none peer cursor-grab flex px-2 items-center gap-2"
+    >
+      <GripVertical className="size-3 text-muted-foreground" />
+      <h1 className="text-sm font-medium">{componentProps.title}</h1>
+      <span
+        className={cn("text-xs text-muted-foreground", !showDebug && "hidden")}
+      >
+        {componentProps.id}
+      </span>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => removeWidget?.(componentProps.id)}
+        disabled={!removeWidget}
+      >
+        <Trash2 className="size-3 text-muted-foreground" />
+      </Button>
+    </div>
+  );
+}
+
 export default function WidgetWrapper({
   descriptor,
   component,
   componentProps,
 }: WidgetWrapperProps) {
-  const { showDebug } = useUIInspectStore((state) => state);
-
   const dragRef = useRef<HTMLDivElement>(null);
 
   let dragItemSource: WidgetDnDProps;
@@ -91,8 +126,7 @@ export default function WidgetWrapper({
   if (!component) return <WidgetPreview drag={drag} descriptor={descriptor} />;
 
   const Comp = dragItemSource.component;
-  const { addWidget, moveWidget, updateWidget, removeWidget } =
-    useWidgetTreeStore((state) => state);
+  const { addWidget, moveWidget } = useWidgetTreeStore((state) => state);
 
   const [{ isOver }, drop] = useDrop<WidgetDnDProps, void, { isOver: boolean }>(
     {
@@ -115,30 +149,15 @@ export default function WidgetWrapper({
 
   return (
     <div className="flex flex-col flex-1">
-      <div
-        ref={dragRef}
-        className="select-none peer cursor-grab flex px-2 items-center gap-2"
-      >
-        <GripVertical className="size-3 text-muted-foreground" />
-        <h1 className="text-sm font-medium">{componentProps.title}</h1>
-        <span
-          className={cn(
-            "text-xs text-muted-foreground",
-            !showDebug && "hidden"
-          )}
-        >
-          {componentProps.id}
-        </span>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => removeWidget?.(componentProps.id)}
-          disabled={!removeWidget}
-        >
-          <Trash2 className="size-3 text-muted-foreground" />
-        </Button>
-      </div>
-      <Comp {...dragItemSource.componentProps} dropConnector={drop} />
+      <WidgetControlHeader
+        dragConnector={drag}
+        componentProps={dragItemSource.componentProps}
+      />
+      <Comp
+        className={cn(isOver && "border-blue-500")}
+        {...dragItemSource.componentProps}
+        dropConnector={drop}
+      />
     </div>
   );
 }
