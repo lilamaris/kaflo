@@ -8,7 +8,7 @@ import { useWidgetTreeStore } from "../providers/widget-tree-store-provider";
 import WidgetWrapper from "./widget";
 
 export function Section(props: WidgetProps) {
-  const { id, title, layout, dropRef, className } = props;
+  const { id, title, layout, dropConnector, className } = props;
   const { widgets } = useWidgetTreeStore((state) => state);
   const { showDebug } = useUIInspectStore((state) => state);
 
@@ -26,6 +26,9 @@ export function Section(props: WidgetProps) {
       );
     });
   }, [widgets, id]);
+
+  const dropRef = React.useRef<HTMLDivElement>(null);
+  dropConnector?.(dropRef);
 
   return (
     <div
