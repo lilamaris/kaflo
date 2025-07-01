@@ -13,7 +13,7 @@ export type UIInspectActions = {
 export type UIInspectStore = UIInspectState & UIInspectActions;
 
 export const initUIInspectStore = (): UIInspectState => ({
-  panelRatio: 50,
+  panelRatio: 80,
   showDebug: false,
 });
 
