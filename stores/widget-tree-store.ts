@@ -1,7 +1,7 @@
 import { createStore } from "zustand";
 import { v4 as uuidv4 } from "uuid";
 import { Block } from "@/components/widgets/block";
-import { Widget, WidgetProps } from "@/lib/type";
+import { Widget, WidgetLayout, WidgetProps } from "@/lib/type";
 
 export type WidgetTreeState = {
   widgets: Record<string, Widget>;
@@ -16,6 +16,10 @@ export type WidgetTreeActions = {
   removeWidget: (id: string) => void;
   moveWidget: (widgetId: string, parentId: string) => void;
   updateWidget: (widgetId: string, updatedProps: WidgetProps) => void;
+  updateWidgetLayout: (
+    widgetId: string,
+    updatedLayout: Partial<WidgetLayout>
+  ) => void;
 };
 
 export type WidgetTreeStore = WidgetTreeState & WidgetTreeActions;
@@ -128,6 +132,26 @@ export const createWidgetTreeStore = (
             componentProps: {
               ...state.widgets[widgetId].componentProps,
               ...updatedProps,
+            },
+          },
+        },
+      }));
+    },
+    updateWidgetLayout: (
+      widgetId: string,
+      updatedLayout: Partial<WidgetLayout>
+    ) => {
+      set((state) => ({
+        widgets: {
+          ...state.widgets,
+          [widgetId]: {
+            ...state.widgets[widgetId],
+            componentProps: {
+              ...state.widgets[widgetId].componentProps,
+              layout: {
+                ...state.widgets[widgetId].componentProps.layout,
+                ...updatedLayout,
+              },
             },
           },
         },

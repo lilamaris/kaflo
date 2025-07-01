@@ -1,12 +1,35 @@
 import * as React from "react";
 import { useWidgetTreeStore } from "@/components/providers/widget-tree-store-provider";
 import { ConnectDragSource, useDrag, useDrop } from "react-dnd";
-import { WidgetDescriptor, WidgetProps, WidgetDnDProps } from "@/lib/type";
+import {
+  WidgetDescriptor,
+  WidgetProps,
+  WidgetDnDProps,
+  LayoutDirection,
+  LayoutAlign,
+  LayoutJustify,
+} from "@/lib/type";
 import { useRef } from "react";
 import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
-import { GripVertical, Trash2 } from "lucide-react";
+import {
+  AlignCenter,
+  AlignRight,
+  AlignLeft,
+  StretchVertical,
+  Columns2,
+  GripVertical,
+  Rows2,
+  Trash2,
+  MoreVertical,
+} from "lucide-react";
 import { useUIInspectStore } from "../providers/ui-inspect-store-provider";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 
 export type WidgetWrapperProps =
   | {
@@ -54,7 +77,141 @@ function WidgetPreview({
   );
 }
 
-export function WidgetControlHeader({
+function JustifyButton({
+  id,
+  justify,
+}: {
+  id: string;
+  justify: LayoutJustify;
+}) {
+  const { updateWidgetLayout } = useWidgetTreeStore((state) => state);
+  let icon;
+
+  function setJustify(id: string, justify: LayoutJustify) {
+    updateWidgetLayout(id, { justify });
+  }
+
+  switch (justify) {
+    case "start":
+      icon = <AlignLeft className="size-3 text-muted-foreground" />;
+      break;
+    case "center":
+      icon = <AlignCenter className="size-3 text-muted-foreground" />;
+      break;
+    case "end":
+      icon = <AlignRight className="size-3 text-muted-foreground" />;
+      break;
+    case "between":
+      icon = <StretchVertical className="size-3 text-muted-foreground" />;
+      break;
+  }
+
+  return (
+    <Button variant="ghost" size="icon" onClick={() => setJustify(id, justify)}>
+      {icon}
+    </Button>
+  );
+}
+
+function AlignButton({ id, align }: { id: string; align: LayoutAlign }) {
+  const { updateWidgetLayout } = useWidgetTreeStore((state) => state);
+  let icon;
+
+  function setAlign(id: string, align: LayoutAlign) {
+    updateWidgetLayout(id, { align });
+  }
+
+  switch (align) {
+    case "start":
+      icon = <AlignLeft className="size-3 text-muted-foreground" />;
+      break;
+    case "center":
+      icon = <AlignCenter className="size-3 text-muted-foreground" />;
+      break;
+    case "end":
+      icon = <AlignRight className="size-3 text-muted-foreground" />;
+      break;
+    case "stretch":
+      icon = <StretchVertical className="size-3 text-muted-foreground" />;
+      break;
+  }
+
+  return (
+    <Button variant="ghost" size="icon" onClick={() => setAlign(id, align)}>
+      {icon}
+    </Button>
+  );
+}
+
+function DirectionButton({
+  id,
+  direction,
+}: {
+  id: string;
+  direction: LayoutDirection;
+}) {
+  const { updateWidgetLayout } = useWidgetTreeStore((state) => state);
+  let icon;
+
+  function setDirection(id: string, direction: LayoutDirection) {
+    updateWidgetLayout(id, { direction });
+  }
+
+  switch (direction) {
+    case "vertical":
+      icon = <Rows2 className="size-3 text-muted-foreground" />;
+      break;
+    case "horizontal":
+      icon = <Columns2 className="size-3 text-muted-foreground" />;
+      break;
+  }
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={() => setDirection(id, direction)}
+    >
+      {icon}
+    </Button>
+  );
+}
+
+function WidgetLayoutMenu({ id }: { id: string }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="size-6" size="icon">
+          <MoreVertical className="size-3 text-muted-foreground" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <div className="flex gap-2 items-center">
+          <div>
+            <DropdownMenuLabel>Layout</DropdownMenuLabel>
+            <DirectionButton id={id} direction={"vertical"} />
+            <DirectionButton id={id} direction={"horizontal"} />
+          </div>
+          <div>
+            <DropdownMenuLabel>Justify</DropdownMenuLabel>
+            <JustifyButton id={id} justify={"start"} />
+            <JustifyButton id={id} justify={"center"} />
+            <JustifyButton id={id} justify={"end"} />
+            <JustifyButton id={id} justify={"between"} />
+          </div>
+          <div>
+            <DropdownMenuLabel>Align</DropdownMenuLabel>
+            <AlignButton id={id} align={"start"} />
+            <AlignButton id={id} align={"center"} />
+            <AlignButton id={id} align={"end"} />
+            <AlignButton id={id} align={"stretch"} />
+          </div>
+        </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function WidgetControlHeader({
   dragConnector,
   componentProps,
 }: {
@@ -87,6 +244,7 @@ export function WidgetControlHeader({
       >
         <Trash2 className="size-3 text-muted-foreground" />
       </Button>
+      <WidgetLayoutMenu id={componentProps.id} />
     </div>
   );
 }
