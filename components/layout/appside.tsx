@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/sidebar";
 
 import BlockDescriptor from "@/components/widgets/block";
+import SectionDescriptor from "@/components/widgets/section";
 import Widget from "../widgets/widget";
 
 export default function AppSidebar({
@@ -35,6 +36,9 @@ export default function AppSidebar({
             <SidebarMenu>
               <SidebarMenuItem>
                 <Widget descriptor={BlockDescriptor} />
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <Widget descriptor={SectionDescriptor} />
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>

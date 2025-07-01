@@ -13,14 +13,18 @@ export interface WidgetControl {
   removeWidget: (widgetId: string) => void;
 }
 
-export interface WidgetProps
-  extends Partial<DnDSource>,
-    Partial<WidgetControl> {
-  id: string;
-  title: string;
+export interface WidgetLayout {
   direction: LayoutDirection;
   justify: LayoutJustify;
   align: LayoutAlign;
+}
+
+export interface WidgetProps {
+  id: string;
+  title: string;
+  layout: WidgetLayout;
+  dropConnector?: ConnectDropTarget;
+  className?: string;
 }
 
 export interface WidgetDnDProps {

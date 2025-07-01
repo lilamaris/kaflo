@@ -28,9 +28,11 @@ export const initWidgetTreeStore = (): WidgetTreeState => ({
       componentProps: {
         id: "root",
         title: "최상위 블록",
-        direction: "vertical",
-        justify: "center",
-        align: "stretch",
+        layout: {
+          direction: "vertical",
+          justify: "center",
+          align: "stretch",
+        },
       },
     },
   },

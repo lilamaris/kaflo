@@ -3,6 +3,10 @@ import { useWidgetTreeStore } from "@/components/providers/widget-tree-store-pro
 import { ConnectDragSource, useDrag, useDrop } from "react-dnd";
 import { WidgetDescriptor, WidgetProps, WidgetDnDProps } from "@/lib/type";
 import { useRef } from "react";
+import { Button } from "../ui/button";
+import { cn } from "@/lib/utils";
+import { GripVertical, Trash2 } from "lucide-react";
+import { useUIInspectStore } from "../providers/ui-inspect-store-provider";
 
 export type WidgetWrapperProps =
   | {
@@ -19,9 +23,11 @@ export type WidgetWrapperProps =
 const defaultComponentProps: WidgetProps = {
   id: "",
   title: "",
-  direction: "vertical",
-  justify: "start",
-  align: "stretch",
+  layout: {
+    direction: "vertical",
+    justify: "start",
+    align: "stretch",
+  },
 };
 
 function WidgetPreview({
@@ -53,26 +59,38 @@ export default function WidgetWrapper({
   component,
   componentProps,
 }: WidgetWrapperProps) {
+  const { showDebug } = useUIInspectStore((state) => state);
+
   const dragRef = useRef<HTMLDivElement>(null);
+
+  let dragItemSource: WidgetDnDProps;
+  if (descriptor) {
+    dragItemSource = {
+      component: descriptor.component,
+      componentProps: {
+        ...defaultComponentProps,
+        title: `이름 없는 ${descriptor.label}`,
+      },
+    };
+  } else {
+    dragItemSource = { component, componentProps };
+  }
+
   const [{ isDragging }, drag] = useDrag<
     WidgetDnDProps,
     void,
     { isDragging: boolean }
   >({
     type: "widget",
-    item: {
-      component: component || descriptor.component,
-      componentProps: componentProps || defaultComponentProps,
-    },
+    item: dragItemSource,
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
   });
-  drag(dragRef);
 
   if (!component) return <WidgetPreview drag={drag} descriptor={descriptor} />;
 
-  const Comp = component;
+  const Comp = dragItemSource.component;
   const { addWidget, moveWidget, updateWidget, removeWidget } =
     useWidgetTreeStore((state) => state);
 
@@ -93,18 +111,34 @@ export default function WidgetWrapper({
       },
     }
   );
+  drag(dragRef);
 
   return (
     <div className="flex flex-col flex-1">
-      <Comp
-        {...componentProps}
-        drag={drag}
-        drop={drop}
-        isDragging={isDragging}
-        isOver={isOver}
-        updateWidget={updateWidget}
-        removeWidget={removeWidget}
-      />
+      <div
+        ref={dragRef}
+        className="select-none peer cursor-grab flex px-2 items-center gap-2"
+      >
+        <GripVertical className="size-3 text-muted-foreground" />
+        <h1 className="text-sm font-medium">{componentProps.title}</h1>
+        <span
+          className={cn(
+            "text-xs text-muted-foreground",
+            !showDebug && "hidden"
+          )}
+        >
+          {componentProps.id}
+        </span>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => removeWidget?.(componentProps.id)}
+          disabled={!removeWidget}
+        >
+          <Trash2 className="size-3 text-muted-foreground" />
+        </Button>
+      </div>
+      <Comp {...dragItemSource.componentProps} dropConnector={drop} />
     </div>
   );
 }

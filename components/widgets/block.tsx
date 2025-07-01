@@ -1,39 +1,12 @@
 import * as React from "react";
 
-import {
-  AlignCenter,
-  AlignLeft,
-  AlignRight,
-  GripVertical,
-  Rows2,
-  LayoutGrid,
-  MoreVertical,
-  Pencil,
-  Trash2,
-  Columns2,
-  AlignVerticalJustifyCenter,
-  AlignVerticalJustifyStart,
-  AlignVerticalSpaceBetween,
-  AlignVerticalJustifyEnd,
-  StretchVertical,
-} from "lucide-react";
-import { useDrop, useDrag, ConnectDropTarget } from "react-dnd";
+import { LayoutGrid } from "lucide-react";
 
 import { cn, getLayoutStyle } from "@/lib/utils";
 import { useWidgetTreeStore } from "@/components/providers/widget-tree-store-provider";
-import { useUIInspectStore } from "@/components/providers/ui-inspect-store-provider";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Label } from "../ui/label";
-import { Input } from "../ui/input";
-import Widget from "./widget";
+
+import WidgetWrapper from "./widget";
 import { WidgetDescriptor, WidgetProps } from "@/lib/type";
-import { useRef } from "react";
 
 export interface BlockAlign {
   direction?: "vertical" | "horizontal";
@@ -46,26 +19,12 @@ export interface BlockProps {
   title: string;
 }
 
-export function Block({
-  id,
-  title,
-  direction,
-  justify,
-  align,
-  drag,
-  drop,
-  isDragging,
-  isOver,
-  updateWidget,
-  removeWidget,
-}: WidgetProps) {
-  const dragRef = useRef<HTMLDivElement>(null);
-  const dropRef = useRef<HTMLDivElement>(null);
-  drag?.(dragRef);
-  drop?.(dropRef);
+export function Block(props: WidgetProps) {
+  const { id, title, layout, dropConnector, className } = props;
+  const dropRef = React.useRef<HTMLDivElement>(null);
+  dropConnector?.(dropRef);
 
   const { widgets } = useWidgetTreeStore((state) => state);
-  const { showDebug } = useUIInspectStore((state) => state);
 
   const children = React.useMemo(() => {
     if (!widgets[id]) return null;
@@ -73,7 +32,7 @@ export function Block({
     return childrenInScope.map((childId) => {
       const child = widgets[childId];
       return (
-        <Widget
+        <WidgetWrapper
           component={child.component}
           componentProps={child.componentProps}
           key={childId}
@@ -83,43 +42,17 @@ export function Block({
   }, [widgets, id]);
 
   return (
-    <>
-      <div
-        ref={dragRef}
-        className="select-none peer cursor-grab flex px-2 items-center gap-2"
-      >
-        <GripVertical className="size-3 text-muted-foreground" />
-        <h1 className="text-sm font-medium">{title}</h1>
-        <span
-          className={cn(
-            "text-xs text-muted-foreground",
-            !showDebug && "hidden"
-          )}
-        >
-          {id}
-        </span>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => removeWidget?.(id)}
-          disabled={!removeWidget}
-        >
-          <Trash2 className="size-3 text-muted-foreground" />
-        </Button>
-      </div>
-      <div
-        ref={dropRef}
-        className={cn(
-          "flex flex-1 border-border border rounded-lg p-2 transition-all duration-200 peer-hover:border-green-500",
-          "hover-within:bg-blue-500/10",
-          isDragging && "bg-muted/20",
-          isOver && "border border-blue-500",
-          getLayoutStyle(direction, justify, align)
-        )}
-      >
-        {children}
-      </div>
-    </>
+    <div
+      ref={dropRef}
+      className={cn(
+        "flex flex-1 border-border border rounded-lg p-2 transition-all duration-200 peer-hover:border-green-500",
+        "hover-within:bg-blue-500/10",
+        getLayoutStyle(layout.direction, layout.justify, layout.align),
+        className
+      )}
+    >
+      {children}
+    </div>
   );
 }
 
