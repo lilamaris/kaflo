@@ -11,7 +11,9 @@ import {
 
 import BlockDescriptor from "@/components/widgets/block";
 import SectionDescriptor from "@/components/widgets/section";
-import Widget from "../widgets/widget";
+import WidgetWrapper from "../widgets/widget";
+import { Block } from "../widgets/block";
+import { Section } from "../widgets/section";
 
 export default function AppSidebar({
   ...props
@@ -24,10 +26,13 @@ export default function AppSidebar({
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <Widget descriptor={BlockDescriptor} />
+                <WidgetWrapper descriptor={BlockDescriptor} renderer={Block} />
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <Widget descriptor={SectionDescriptor} />
+                <WidgetWrapper
+                  descriptor={SectionDescriptor}
+                  renderer={Section}
+                />
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>

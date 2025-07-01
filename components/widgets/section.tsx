@@ -1,42 +1,39 @@
 import * as React from "react";
 
-import { WidgetDescriptor, WidgetProps } from "@/lib/type";
+import { WidgetDescriptor, WidgetRenderProps } from "@/lib/type";
 import { cn, getLayoutStyle } from "@/lib/utils";
 import { LayoutPanelLeft } from "lucide-react";
-import { useUIInspectStore } from "../providers/ui-inspect-store-provider";
 import { useWidgetTreeStore } from "../providers/widget-tree-store-provider";
 import WidgetWrapper from "./widget";
 
-export function Section(props: WidgetProps) {
-  const { id, title, layout, dropConnector, className } = props;
+export function Section(props: WidgetRenderProps) {
+  const { attributes, className = "" } = props;
   const { widgets } = useWidgetTreeStore((state) => state);
-  const { showDebug } = useUIInspectStore((state) => state);
 
   const children = React.useMemo(() => {
-    if (!widgets[id]) return null;
-    const childrenInScope = widgets[id].childrenId;
+    if (!widgets[attributes.id]) return null;
+    const childrenInScope = widgets[attributes.id].childrenId;
     return childrenInScope.map((childId) => {
       const child = widgets[childId];
       return (
         <WidgetWrapper
-          component={child.component}
-          componentProps={child.componentProps}
+          renderer={child.renderer}
+          attributes={child.attributes}
           key={childId}
         />
       );
     });
-  }, [widgets, id]);
-
-  const dropRef = React.useRef<HTMLDivElement>(null);
-  dropConnector?.(dropRef);
+  }, [widgets, attributes.id]);
 
   return (
     <div
-      ref={dropRef}
       className={cn(
-        "flex flex-1 border-border border rounded-lg p-2 transition-all duration-200 peer-hover:border-green-500",
-        "hover-within:bg-blue-500/10",
-        getLayoutStyle(layout.direction, layout.justify, layout.align),
+        "flex flex-1 gap-8",
+        getLayoutStyle(
+          attributes.layout.direction,
+          attributes.layout.justify,
+          attributes.layout.align
+        ),
         className
       )}
     >
@@ -49,7 +46,6 @@ const descriptor: WidgetDescriptor = {
   icon: LayoutPanelLeft,
   label: "섹션",
   description: "섹션 위젯",
-  component: Section,
 };
 
 export default descriptor;

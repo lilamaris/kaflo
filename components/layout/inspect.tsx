@@ -3,8 +3,14 @@ import { Button } from "../ui/button";
 import { EllipsisVertical, EyeIcon, Grip, GripVertical } from "lucide-react";
 
 export default function Inspect() {
-  const { showDebug, panelRatio, setPanelRatio, setShowDebug } =
-    useUIInspectStore((state) => state);
+  const {
+    showDebug,
+    panelRatio,
+    setPanelRatio,
+    setShowDebug,
+    showPreview,
+    setShowPreview,
+  } = useUIInspectStore((state) => state);
   return (
     <div className="grid grid-cols-2 gap-4">
       <div className="flex flex-col p-4">
@@ -34,6 +40,17 @@ export default function Inspect() {
             variant="outline"
             size="sm"
             onClick={() => setShowDebug(!showDebug)}
+          >
+            <EyeIcon />
+          </Button>
+        </div>
+
+        <span className="text-sm text-muted-foreground">Preview</span>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowPreview(!showPreview)}
           >
             <EyeIcon />
           </Button>

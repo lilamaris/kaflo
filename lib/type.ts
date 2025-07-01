@@ -11,29 +11,49 @@ export interface WidgetLayout {
   align: LayoutAlign;
 }
 
-export interface WidgetProps {
+export interface WidgetAttributes {
   id: string;
   title: string;
   layout: WidgetLayout;
-  dropConnector?: ConnectDropTarget;
-  className?: string;
 }
 
-export interface WidgetDnDProps {
-  component: React.ComponentType<WidgetProps>;
-  componentProps: WidgetProps;
+export interface WidgetRenderProps {
+  className?: string;
+  state: Omit<Widget, "component" | "componentProps">;
+  attributes: WidgetAttributes;
+}
+
+export interface Widget {
+  parentId: string | null;
+  childrenId: string[];
+  renderer: React.ComponentType<WidgetRenderProps>;
+  attributes: WidgetAttributes;
 }
 
 export interface WidgetDescriptor {
   icon: LucideIcon;
   label: string;
   description: string;
-  component: React.ComponentType<WidgetProps>;
 }
 
-export interface Widget {
-  parentId?: string;
-  childrenId: string[];
-  component: React.ComponentType<WidgetProps>;
-  componentProps: WidgetProps;
+export type WidgetRenderer = {
+  renderer: React.ComponentType<WidgetRenderProps>;
+};
+export type AbstractWidget = {
+  attributes?: never;
+  descriptor: WidgetDescriptor;
+} & WidgetRenderer;
+
+export type ImplementedWidget = {
+  attributes: WidgetAttributes;
+  descriptor?: never;
+} & WidgetRenderer;
+
+export interface DnDProps {
+  originalIndex: number;
 }
+
+export type WidgetWrapperProps = AbstractWidget | ImplementedWidget;
+export type NewWidgetDnDProps = AbstractWidget;
+export type ExistWidgetDnDProps = ImplementedWidget & DnDProps;
+export type WidgetDnDProps = NewWidgetDnDProps | ExistWidgetDnDProps; 

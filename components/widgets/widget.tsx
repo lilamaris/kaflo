@@ -3,11 +3,15 @@ import { useWidgetTreeStore } from "@/components/providers/widget-tree-store-pro
 import { ConnectDragSource, useDrag, useDrop } from "react-dnd";
 import {
   WidgetDescriptor,
-  WidgetProps,
   WidgetDnDProps,
   LayoutDirection,
   LayoutAlign,
   LayoutJustify,
+  Widget,
+  WidgetWrapperProps,
+  WidgetAttributes,
+  WidgetRenderProps,
+  ExistWidgetDnDProps,
 } from "@/lib/type";
 import { useRef } from "react";
 import { Button } from "../ui/button";
@@ -31,36 +35,23 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 
-export type WidgetWrapperProps =
-  | {
-      descriptor: WidgetDescriptor;
-      component?: never;
-      componentProps?: never;
-    }
-  | {
-      descriptor?: never;
-      component: React.ComponentType<WidgetProps>;
-      componentProps: WidgetProps;
-    };
-
-const defaultComponentProps: WidgetProps = {
-  id: "",
-  title: "",
-  layout: {
-    direction: "vertical",
-    justify: "start",
-    align: "stretch",
-  },
-};
-
 function WidgetPreview({
   descriptor,
-  drag,
+  renderer,
 }: {
   descriptor: WidgetDescriptor;
-  drag: ConnectDragSource;
+  renderer: React.ComponentType<WidgetRenderProps>;
 }) {
   const dragRef = useRef<HTMLDivElement>(null);
+
+  const [, drag] = useDrag<WidgetDnDProps, void, any>({
+    type: "widget",
+    item: {
+      descriptor,
+      renderer,
+    },
+  });
+
   drag(dragRef);
 
   return (
@@ -213,111 +204,171 @@ function WidgetLayoutMenu({ id }: { id: string }) {
 
 function WidgetControlHeader({
   dragConnector,
-  componentProps,
+  attributes,
+  reorderWidget,
+  findWidget,
 }: {
   dragConnector: ConnectDragSource;
-  componentProps: WidgetProps;
+  attributes: WidgetAttributes;
+  reorderWidget: (id: string, atIndex: number) => void;
+  findWidget: (id: string) => { widget: Widget; index: number } | null;
 }) {
   const { removeWidget } = useWidgetTreeStore((state) => state);
-  const { showDebug } = useUIInspectStore((state) => state);
+  const { showDebug, showPreview } = useUIInspectStore((state) => state);
 
-  const dragRef = React.useRef<HTMLDivElement>(null);
-  dragConnector(dragRef);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const [, drop] = useDrop<ExistWidgetDnDProps, void, {}>({
+    accept: "widget",
+    hover: (item) => {
+      if (item.descriptor) return;
+      const { id: draggedId } = item.attributes;
+      if (!draggedId || draggedId === attributes.id) return;
+      const result = findWidget(attributes.id);
+      console.log(result);
+    },
+  });
+
+  drop(ref);
+  dragConnector(ref);
 
   return (
     <div
-      ref={dragRef}
-      className="select-none peer cursor-grab flex px-2 items-center gap-2"
+      ref={ref}
+      className={cn(
+        "select-none peer cursor-grab flex px-2 items-center gap-2",
+        showPreview && "hidden"
+      )}
     >
       <GripVertical className="size-3 text-muted-foreground" />
-      <h1 className="text-sm font-medium">{componentProps.title}</h1>
+      <h1 className="text-sm font-medium">{attributes.title}</h1>
       <span
         className={cn("text-xs text-muted-foreground", !showDebug && "hidden")}
       >
-        {componentProps.id}
+        {attributes.id}
       </span>
-      {componentProps.id !== "root" && (
+      {attributes.id !== "root" && (
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => removeWidget?.(componentProps.id)}
+          onClick={() => removeWidget?.(attributes.id)}
           disabled={!removeWidget}
         >
           <Trash2 className="size-3 text-muted-foreground" />
         </Button>
       )}
-      <WidgetLayoutMenu id={componentProps.id} />
+      <WidgetLayoutMenu id={attributes.id} />
     </div>
   );
 }
 
-export default function WidgetWrapper({
-  descriptor,
-  component,
-  componentProps,
-}: WidgetWrapperProps) {
-  const dragRef = useRef<HTMLDivElement>(null);
-
-  let dragItemSource: WidgetDnDProps;
-  if (descriptor) {
-    dragItemSource = {
-      component: descriptor.component,
-      componentProps: {
-        ...defaultComponentProps,
-        title: `이름 없는 ${descriptor.label}`,
-      },
-    };
-  } else {
-    dragItemSource = { component, componentProps };
+export default function WidgetWrapper(props: WidgetWrapperProps) {
+  if (props.descriptor) {
+    // Widget is currently describe mode. never initialized widget.
+    return (
+      <WidgetPreview descriptor={props.descriptor} renderer={props.renderer} />
+    );
   }
 
-  const [{ isDragging }, drag] = useDrag<
-    WidgetDnDProps,
+  // Widget is currently rendered in the canvas. have widget attributes.
+  const { widgets, addWidget, updateWidget, moveWidget } = useWidgetTreeStore(
+    (state) => state
+  );
+
+  const { renderer, attributes } = props;
+  const widget = React.useMemo(() => {
+    const { id } = attributes;
+    return widgets[id];
+  }, [widgets, attributes]);
+
+  const dropRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<HTMLDivElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
+
+  const findWidget = React.useCallback(
+    (id: string) => {
+      const widget = widgets[id];
+      const parent = widget.parentId ? widgets[widget.parentId] : null;
+      if (!parent) return null;
+      const widgetAt = parent.childrenId.indexOf(id);
+      return {
+        widget,
+        index: widgetAt,
+      };
+    },
+    [widgets]
+  );
+
+  const reorderWidget = React.useCallback(
+    (id: string, atIndex: number) => {
+      const { widget, index } = findWidget(id) ?? {};
+      if (!widget || !index) return;
+      updateWidget(widget.parentId ?? "", {
+        childrenId: [
+          ...widget.childrenId.slice(0, index),
+          id,
+          ...widget.childrenId.slice(index + 1),
+        ],
+      });
+    },
+    [findWidget, updateWidget]
+  );
+
+  const [{ isDragging }, drag, preview] = useDrag<
+    ExistWidgetDnDProps,
     void,
-    { isDragging: boolean }
+    any
   >({
     type: "widget",
-    item: dragItemSource,
+    item: { attributes, renderer, originalIndex: 0 },
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
   });
 
-  if (!component) return <WidgetPreview drag={drag} descriptor={descriptor} />;
-
-  const Comp = dragItemSource.component;
-  const { addWidget, moveWidget } = useWidgetTreeStore((state) => state);
-
-  const [{ isOver }, drop] = useDrop<WidgetDnDProps, void, { isOver: boolean }>(
+  const [{ isOver, isChildrenOver }, drop] = useDrop<WidgetDnDProps, void, any>(
     {
       accept: "widget",
       collect: (monitor) => ({
         isOver: !!monitor.isOver({ shallow: true }),
+        isChildrenOver: !!monitor.isOver({ shallow: false }),
       }),
       drop: (item, monitor) => {
         if (monitor.didDrop()) return;
-        const { id } = item.componentProps;
-        if (id) {
-          moveWidget(id, componentProps.id);
-        } else {
-          addWidget(item.component, item.componentProps, componentProps.id);
+        if (item.descriptor) {
+          addWidget(item.renderer, item.descriptor, attributes.id);
+          return;
         }
+
+        const { id } = attributes;
+        moveWidget(item.attributes.id, id);
       },
     }
   );
+  preview(previewRef);
   drag(dragRef);
+  drop(dropRef);
 
   return (
-    <div className="flex flex-col flex-1">
+    <div ref={dropRef} className={cn("flex flex-col flex-1")}>
       <WidgetControlHeader
         dragConnector={drag}
-        componentProps={dragItemSource.componentProps}
+        attributes={attributes}
+        reorderWidget={reorderWidget}
+        findWidget={findWidget}
       />
-      <Comp
-        className={cn(isOver && "border-blue-500")}
-        {...dragItemSource.componentProps}
-        dropConnector={drop}
-      />
+      <div className={cn("flex flex-1", isOver && "rounded-lg bg-muted")}>
+        <props.renderer
+          className={cn(
+            "transition-all duration-200",
+            isDragging && "rounded-lg bg-muted/20 border border-green-500",
+            isOver && "rounded-lg border-blue-500 border bg-blue-500/10",
+            isChildrenOver && "scale-95"
+          )}
+          state={widget}
+          attributes={attributes}
+        />
+      </div>
     </div>
   );
 }

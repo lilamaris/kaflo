@@ -23,9 +23,6 @@ export default function UICanvas() {
   const root = widgets.root;
 
   return (
-    <WidgetWrapper
-      component={root.component}
-      componentProps={root.componentProps}
-    />
+    <WidgetWrapper renderer={root.renderer} attributes={root.attributes} />
   );
 }

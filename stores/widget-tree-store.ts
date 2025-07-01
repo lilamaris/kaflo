@@ -1,7 +1,13 @@
 import { createStore } from "zustand";
 import { v4 as uuidv4 } from "uuid";
-import { Block } from "@/components/widgets/block";
-import { Widget, WidgetLayout, WidgetProps } from "@/lib/type";
+import {
+  Widget,
+  WidgetAttributes,
+  WidgetDescriptor,
+  WidgetLayout,
+  WidgetRenderProps,
+} from "@/lib/type";
+import { Section } from "@/components/widgets/section";
 
 export type WidgetTreeState = {
   widgets: Record<string, Widget>;
@@ -9,13 +15,13 @@ export type WidgetTreeState = {
 
 export type WidgetTreeActions = {
   addWidget: (
-    component: React.ComponentType<any>,
-    componentProps: WidgetProps,
-    parentId?: string
+    renderer: React.ComponentType<WidgetRenderProps>,
+    descriptor: WidgetDescriptor,
+    parentId: string | null
   ) => void;
   removeWidget: (id: string) => void;
   moveWidget: (widgetId: string, parentId: string) => void;
-  updateWidget: (widgetId: string, updatedProps: WidgetProps) => void;
+  updateWidget: (widgetId: string, data: Partial<Widget>) => void;
   updateWidgetLayout: (
     widgetId: string,
     updatedLayout: Partial<WidgetLayout>
@@ -27,11 +33,12 @@ export type WidgetTreeStore = WidgetTreeState & WidgetTreeActions;
 export const initWidgetTreeStore = (): WidgetTreeState => ({
   widgets: {
     root: {
+      parentId: null,
       childrenId: [],
-      component: Block,
-      componentProps: {
+      renderer: Section,
+      attributes: {
         id: "root",
-        title: "최상위 블록",
+        title: "최상위 섹션",
         layout: {
           direction: "vertical",
           justify: "center",
@@ -50,25 +57,34 @@ export const createWidgetTreeStore = (
   const store = createStore<WidgetTreeStore>((set) => ({
     ...initState,
     addWidget: (
-      component: React.ComponentType<any>,
-      componentProps: WidgetProps,
-      parentId?: string
+      renderer: React.ComponentType<WidgetRenderProps>,
+      descriptor: WidgetDescriptor,
+      parentId: string | null
     ) => {
       set((state) => {
-        const id = uuidv4();
+        console.log(renderer, descriptor, parentId);
+        const attributes: WidgetAttributes = {
+          id: uuidv4(),
+          title: descriptor.label,
+          layout: {
+            direction: "vertical",
+            justify: "start",
+            align: "stretch",
+          },
+        };
         const widget = {
           parentId,
           childrenId: [],
-          component,
-          componentProps: { ...componentProps, id },
+          renderer,
+          attributes,
         };
         if (parentId) {
-          state.widgets[parentId].childrenId.push(id);
+          state.widgets[parentId].childrenId.push(attributes.id);
         }
         return {
           widgets: {
             ...state.widgets,
-            [id]: widget,
+            [attributes.id]: widget,
           },
         };
       });
@@ -123,16 +139,13 @@ export const createWidgetTreeStore = (
         };
       });
     },
-    updateWidget: (widgetId: string, updatedProps: WidgetProps) => {
+    updateWidget: (widgetId: string, data: Partial<Widget>) => {
       set((state) => ({
         widgets: {
           ...state.widgets,
           [widgetId]: {
             ...state.widgets[widgetId],
-            componentProps: {
-              ...state.widgets[widgetId].componentProps,
-              ...updatedProps,
-            },
+            ...data,
           },
         },
       }));
@@ -146,10 +159,10 @@ export const createWidgetTreeStore = (
           ...state.widgets,
           [widgetId]: {
             ...state.widgets[widgetId],
-            componentProps: {
-              ...state.widgets[widgetId].componentProps,
+            attributes: {
+              ...state.widgets[widgetId].attributes,
               layout: {
-                ...state.widgets[widgetId].componentProps.layout,
+                ...state.widgets[widgetId].attributes.layout,
                 ...updatedLayout,
               },
             },
