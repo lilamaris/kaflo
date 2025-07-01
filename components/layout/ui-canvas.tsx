@@ -1,6 +1,7 @@
 "use client";
 
 import { useWidgetTreeStore } from "../providers/widget-tree-store-provider";
+import Widget from "../widgets/widget";
 
 export function WidthIndicator({ width }: { width: number }) {
   return (
@@ -21,8 +22,10 @@ export default function UICanvas() {
   const { widgets } = useWidgetTreeStore((state) => state);
   const root = widgets.root;
   return (
-    <>
-      <root.component {...root.componentProps} />
-    </>
+    <Widget
+      component={root.component}
+      componentProps={root.componentProps}
+      descriptor={root.componentProps}
+    />
   );
 }

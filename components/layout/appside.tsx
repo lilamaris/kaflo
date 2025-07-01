@@ -8,11 +8,9 @@ import {
   SidebarMenu,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-// import { headingPreview, WidgetPreview } from "../widgets/heading";
-// import { blockPreview } from "../widgets/block";
-import Profile from "../widgets/profile";
 
-// const widgets = [headingPreview, blockPreview];
+import BlockDescriptor from "@/components/widgets/block";
+import Widget from "../widgets/widget";
 
 export default function AppSidebar({
   ...props
@@ -36,7 +34,7 @@ export default function AppSidebar({
             </SidebarMenu>
             <SidebarMenu>
               <SidebarMenuItem>
-                <Profile />
+                <Widget descriptor={BlockDescriptor} />
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
