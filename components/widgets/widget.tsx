@@ -1,62 +1,110 @@
 import * as React from "react";
 import { useWidgetTreeStore } from "@/components/providers/widget-tree-store-provider";
-import { useUIInspectStore } from "@/components/providers/ui-inspect-store-provider";
-import { DropItem, ItemTypes } from "@/lib/type";
-import { useDrag, useDrop } from "react-dnd";
-import { GripVertical } from "lucide-react";
+import { ConnectDragSource, useDrag, useDrop } from "react-dnd";
+import { WidgetDescriptor, WidgetProps, WidgetDnDProps } from "@/lib/type";
+import { useRef } from "react";
 
-export default function Widget({
+export type WidgetWrapperProps =
+  | {
+      descriptor: WidgetDescriptor;
+      component?: never;
+      componentProps?: never;
+    }
+  | {
+      descriptor?: never;
+      component: React.ComponentType<WidgetProps>;
+      componentProps: WidgetProps;
+    };
+
+const defaultComponentProps: WidgetProps = {
+  id: "",
+  title: "",
+  direction: "vertical",
+  justify: "start",
+  align: "stretch",
+};
+
+function WidgetPreview({
+  descriptor,
+  drag,
+}: {
+  descriptor: WidgetDescriptor;
+  drag: ConnectDragSource;
+}) {
+  const dragRef = useRef<HTMLDivElement>(null);
+  drag(dragRef);
+
+  return (
+    <div
+      ref={dragRef}
+      className="flex flex-col border-border border rounded-md p-2 gap-2 items-center hover:bg-muted cursor-pointer"
+    >
+      <descriptor.icon className="size-4" />
+      <span className="text-sm font-medium">{descriptor.label}</span>
+      <span className="text-xs text-muted-foreground">
+        {descriptor.description}
+      </span>
+    </div>
+  );
+}
+
+export default function WidgetWrapper({
+  descriptor,
   component,
   componentProps,
-}: {
-  component: React.ComponentType<any>;
-  componentProps: Record<string, any>;
-}) {
-  const { id, ...rest } = componentProps;
-
-  const { addWidget } = useWidgetTreeStore((state) => state);
-  const dragRef = React.useRef<HTMLDivElement>(null);
-  const dropRef = React.useRef<HTMLDivElement>(null);
-
-  const [{ isDragging }, drag] = useDrag({
-    type: ItemTypes.Widget,
+}: WidgetWrapperProps) {
+  const dragRef = useRef<HTMLDivElement>(null);
+  const [{ isDragging }, drag] = useDrag<
+    WidgetDnDProps,
+    void,
+    { isDragging: boolean }
+  >({
+    type: "widget",
     item: {
-      component,
-      componentProps,
+      component: component || descriptor.component,
+      componentProps: componentProps || defaultComponentProps,
     },
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
   });
-
-  const [{ isOver }, drop] = useDrop<DropItem, void, { isOver: boolean }>({
-    accept: ItemTypes.Widget,
-    collect: (monitor) => ({
-      isOver: !!monitor.isOver({ shallow: true }),
-    }),
-    drop: (item: DropItem, monitor) => {
-      console.log("Dropped", item);
-      const { id: sourceId, component, componentProps } = item;
-      if (!sourceId) {
-        addWidget(component, componentProps, id);
-      }
-    },
-  });
-
   drag(dragRef);
-  drop(dropRef);
+
+  if (!component) return <WidgetPreview drag={drag} descriptor={descriptor} />;
 
   const Comp = component;
+  const { addWidget, moveWidget, updateWidget, removeWidget } =
+    useWidgetTreeStore((state) => state);
+
+  const [{ isOver }, drop] = useDrop<WidgetDnDProps, void, { isOver: boolean }>(
+    {
+      accept: "widget",
+      collect: (monitor) => ({
+        isOver: !!monitor.isOver({ shallow: true }),
+      }),
+      drop: (item, monitor) => {
+        if (monitor.didDrop()) return;
+        const { id } = item.componentProps;
+        if (id) {
+          moveWidget(id, componentProps.id);
+        } else {
+          addWidget(item.component, item.componentProps, componentProps.id);
+        }
+      },
+    }
+  );
+
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-2">
-        <div ref={dragRef} className="cursor-grab rounded-sm bg-muted p-1">
-          <GripVertical className="size-3 text-muted-foreground" />
-        </div>
-      </div>
-      <div className="flex flex-1 gap-2">
-        <Comp {...componentProps} dropRef={dropRef} />
-      </div>
+    <div className="flex flex-col flex-1">
+      <Comp
+        {...componentProps}
+        drag={drag}
+        drop={drop}
+        isDragging={isDragging}
+        isOver={isOver}
+        updateWidget={updateWidget}
+        removeWidget={removeWidget}
+      />
     </div>
   );
 }

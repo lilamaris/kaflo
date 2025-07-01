@@ -1,14 +1,7 @@
 import { createStore } from "zustand";
 import { v4 as uuidv4 } from "uuid";
 import { Block } from "@/components/widgets/block";
-
-export type Widget = {
-  parentId?: string;
-  childrenId: string[];
-  identifier: string;
-  component: React.ComponentType<any>;
-  componentProps: Record<string, any>;
-};
+import { Widget, WidgetProps } from "@/lib/type";
 
 export type WidgetTreeState = {
   widgets: Record<string, Widget>;
@@ -17,12 +10,12 @@ export type WidgetTreeState = {
 export type WidgetTreeActions = {
   addWidget: (
     component: React.ComponentType<any>,
-    componentProps: Record<string, any>,
+    componentProps: WidgetProps,
     parentId?: string
   ) => void;
   removeWidget: (id: string) => void;
   moveWidget: (widgetId: string, parentId: string) => void;
-  updateWidget: (widgetId: string, updatedProps: Record<string, any>) => void;
+  updateWidget: (widgetId: string, updatedProps: WidgetProps) => void;
 };
 
 export type WidgetTreeStore = WidgetTreeState & WidgetTreeActions;
@@ -31,9 +24,14 @@ export const initWidgetTreeStore = (): WidgetTreeState => ({
   widgets: {
     root: {
       childrenId: [],
-      identifier: "root",
       component: Block,
-      componentProps: { id: "root", title: "최상위 블록" },
+      componentProps: {
+        id: "root",
+        title: "최상위 블록",
+        direction: "vertical",
+        justify: "center",
+        align: "stretch",
+      },
     },
   },
 });
@@ -47,18 +45,16 @@ export const createWidgetTreeStore = (
     ...initState,
     addWidget: (
       component: React.ComponentType<any>,
-      componentProps: Record<string, any>,
+      componentProps: WidgetProps,
       parentId?: string
     ) => {
       set((state) => {
         const id = uuidv4();
-        const { identifier, ...rest } = componentProps;
         const widget = {
           parentId,
           childrenId: [],
-          identifier,
           component,
-          componentProps: { ...rest, id },
+          componentProps: { ...componentProps, id },
         };
         if (parentId) {
           state.widgets[parentId].childrenId.push(id);
@@ -121,7 +117,7 @@ export const createWidgetTreeStore = (
         };
       });
     },
-    updateWidget: (widgetId: string, updatedProps: Record<string, any>) => {
+    updateWidget: (widgetId: string, updatedProps: WidgetProps) => {
       set((state) => ({
         widgets: {
           ...state.widgets,
