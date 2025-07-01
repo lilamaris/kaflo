@@ -236,14 +236,16 @@ function WidgetControlHeader({
       >
         {componentProps.id}
       </span>
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={() => removeWidget?.(componentProps.id)}
-        disabled={!removeWidget}
-      >
-        <Trash2 className="size-3 text-muted-foreground" />
-      </Button>
+      {componentProps.id !== "root" && (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => removeWidget?.(componentProps.id)}
+          disabled={!removeWidget}
+        >
+          <Trash2 className="size-3 text-muted-foreground" />
+        </Button>
+      )}
       <WidgetLayoutMenu id={componentProps.id} />
     </div>
   );
