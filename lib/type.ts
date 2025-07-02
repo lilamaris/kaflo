@@ -1,9 +1,10 @@
 import { LucideIcon } from "lucide-react";
-import { ConnectDropTarget } from "react-dnd";
 
 export type LayoutDirection = "vertical" | "horizontal";
 export type LayoutJustify = "start" | "center" | "end" | "between";
 export type LayoutAlign = "start" | "center" | "end" | "stretch";
+
+export type WidgetRenderer = React.ComponentType<WidgetRenderAttributes>;
 
 export interface WidgetLayout {
   direction: LayoutDirection;
@@ -11,23 +12,18 @@ export interface WidgetLayout {
   align: LayoutAlign;
 }
 
-export interface WidgetAttributes {
-  id: string;
-  title: string;
-  layout: WidgetLayout;
-}
-
-export interface WidgetRenderProps {
+export interface WidgetRenderAttributes {
+  widgetId: string;
+  title?: string;
   className?: string;
-  state: Omit<Widget, "component" | "componentProps">;
-  attributes: WidgetAttributes;
+  layout: WidgetLayout;
 }
 
 export interface Widget {
   parentId: string | null;
   childrenId: string[];
-  renderer: React.ComponentType<WidgetRenderProps>;
-  attributes: WidgetAttributes;
+  renderer: WidgetRenderer;
+  attributes: WidgetRenderAttributes;
 }
 
 export interface WidgetDescriptor {
@@ -36,18 +32,15 @@ export interface WidgetDescriptor {
   description: string;
 }
 
-export type WidgetRenderer = {
-  renderer: React.ComponentType<WidgetRenderProps>;
-};
 export type AbstractWidget = {
   attributes?: never;
   descriptor: WidgetDescriptor;
-} & WidgetRenderer;
+} & { renderer: WidgetRenderer };
 
 export type ImplementedWidget = {
-  attributes: WidgetAttributes;
+  attributes: WidgetRenderAttributes;
   descriptor?: never;
-} & WidgetRenderer;
+} & { renderer: WidgetRenderer };
 
 export interface DnDProps {
   originalIndex: number;
@@ -56,4 +49,4 @@ export interface DnDProps {
 export type WidgetWrapperProps = AbstractWidget | ImplementedWidget;
 export type NewWidgetDnDProps = AbstractWidget;
 export type ExistWidgetDnDProps = ImplementedWidget & DnDProps;
-export type WidgetDnDProps = NewWidgetDnDProps | ExistWidgetDnDProps; 
+export type WidgetDnDProps = NewWidgetDnDProps | ExistWidgetDnDProps;

@@ -2,10 +2,10 @@ import { createStore } from "zustand";
 import { v4 as uuidv4 } from "uuid";
 import {
   Widget,
-  WidgetAttributes,
   WidgetDescriptor,
   WidgetLayout,
-  WidgetRenderProps,
+  WidgetRenderAttributes,
+  WidgetRenderer,
 } from "@/lib/type";
 import { Section } from "@/components/widgets/section";
 
@@ -15,7 +15,7 @@ export type WidgetTreeState = {
 
 export type WidgetTreeActions = {
   addWidget: (
-    renderer: React.ComponentType<WidgetRenderProps>,
+    renderer: WidgetRenderer,
     descriptor: WidgetDescriptor,
     parentId: string | null
   ) => void;
@@ -25,6 +25,15 @@ export type WidgetTreeActions = {
   updateWidgetLayout: (
     widgetId: string,
     updatedLayout: Partial<WidgetLayout>
+  ) => void;
+  getWidgetWithParentOrder: (
+    widgetId: string
+  ) => { widget: Widget; orderAt: number } | null;
+  getWidget: (widgetId: string) => Widget | null;
+  setWidgetOrder: (
+    parentWidgetId: string,
+    targetWidgetId: string,
+    targetIndexAt: number
   ) => void;
 };
 
@@ -37,7 +46,7 @@ export const initWidgetTreeStore = (): WidgetTreeState => ({
       childrenId: [],
       renderer: Section,
       attributes: {
-        id: "root",
+        widgetId: "root",
         title: "최상위 섹션",
         layout: {
           direction: "vertical",
@@ -54,17 +63,17 @@ export const defaultInitState: WidgetTreeState = initWidgetTreeStore();
 export const createWidgetTreeStore = (
   initState: WidgetTreeState = defaultInitState
 ) => {
-  const store = createStore<WidgetTreeStore>((set) => ({
+  const store = createStore<WidgetTreeStore>((set, get) => ({
     ...initState,
     addWidget: (
-      renderer: React.ComponentType<WidgetRenderProps>,
+      renderer: WidgetRenderer,
       descriptor: WidgetDescriptor,
       parentId: string | null
     ) => {
       set((state) => {
-        console.log(renderer, descriptor, parentId);
-        const attributes: WidgetAttributes = {
-          id: uuidv4(),
+        const widgetId = uuidv4();
+        const attributes: WidgetRenderAttributes = {
+          widgetId,
           title: descriptor.label,
           layout: {
             direction: "vertical",
@@ -79,12 +88,12 @@ export const createWidgetTreeStore = (
           attributes,
         };
         if (parentId) {
-          state.widgets[parentId].childrenId.push(attributes.id);
+          state.widgets[parentId].childrenId.push(widgetId);
         }
         return {
           widgets: {
             ...state.widgets,
-            [attributes.id]: widget,
+            [widgetId]: widget,
           },
         };
       });
@@ -169,6 +178,46 @@ export const createWidgetTreeStore = (
           },
         },
       }));
+    },
+    getWidgetWithParentOrder: (widgetId: string) => {
+      const state = get();
+      const widget = state.widgets[widgetId];
+      if (!widget.parentId) return null;
+      const parentWidget = state.widgets[widget?.parentId];
+      const orderAt = parentWidget.childrenId.indexOf(widgetId);
+      return { widget, orderAt };
+    },
+    getWidget: (widgetId: string) => {
+      const state = get();
+      const widget = state.widgets[widgetId];
+      return widget;
+    },
+    setWidgetOrder: (
+      parentWidgetId: string,
+      targetWidgetId: string,
+      targetIndexAt: number
+    ) => {
+      set((state) => {
+        const parentWidget = state.widgets[parentWidgetId];
+        const childWidget = state.widgets[targetWidgetId];
+        if (!parentWidget || !childWidget) return { widgets: state.widgets };
+        const originalIndex = parentWidget.childrenId.indexOf(targetWidgetId);
+        const updatedChildrenIds = parentWidget.childrenId.splice(
+          targetIndexAt,
+          0,
+          parentWidget.childrenId.splice(originalIndex, 1)[0]
+        );
+
+        return {
+          widget: {
+            ...state.widgets,
+            [parentWidgetId]: {
+              ...parentWidget,
+              childrenIds: updatedChildrenIds,
+            },
+          },
+        };
+      });
     },
   }));
   return store;

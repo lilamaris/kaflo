@@ -1,21 +1,5 @@
 import * as React from "react";
-import { useWidgetTreeStore } from "@/components/providers/widget-tree-store-provider";
-import { ConnectDragSource, useDrag, useDrop } from "react-dnd";
-import {
-  WidgetDescriptor,
-  WidgetDnDProps,
-  LayoutDirection,
-  LayoutAlign,
-  LayoutJustify,
-  Widget,
-  WidgetWrapperProps,
-  WidgetAttributes,
-  WidgetRenderProps,
-  ExistWidgetDnDProps,
-} from "@/lib/type";
-import { useRef } from "react";
-import { Button } from "../ui/button";
-import { cn } from "@/lib/utils";
+import { useDrag, useDrop } from "react-dnd";
 import {
   AlignCenter,
   AlignRight,
@@ -26,25 +10,42 @@ import {
   Rows2,
   Trash2,
   MoreVertical,
+  CircleX,
 } from "lucide-react";
-import { useUIInspectStore } from "../providers/ui-inspect-store-provider";
+
+import {
+  WidgetDescriptor,
+  LayoutDirection,
+  LayoutAlign,
+  LayoutJustify,
+  Widget,
+  WidgetWrapperProps,
+  ExistWidgetDnDProps,
+  NewWidgetDnDProps,
+  WidgetRenderer,
+} from "@/lib/type";
+import { cn } from "@/lib/utils";
+
+import { useWidgetTreeStore } from "@/components/providers/widget-tree-store-provider";
+import { useUIInspectStore } from "@/components/providers/ui-inspect-store-provider";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-} from "../ui/dropdown-menu";
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 
 function WidgetPreview({
   descriptor,
   renderer,
 }: {
   descriptor: WidgetDescriptor;
-  renderer: React.ComponentType<WidgetRenderProps>;
+  renderer: WidgetRenderer;
 }) {
-  const dragRef = useRef<HTMLDivElement>(null);
+  const dragRef = React.useRef<HTMLDivElement>(null);
 
-  const [, drag] = useDrag<WidgetDnDProps, void, any>({
+  const [, drag] = useDrag<NewWidgetDnDProps, void, any>({
     type: "widget",
     item: {
       descriptor,
@@ -64,6 +65,21 @@ function WidgetPreview({
       <span className="text-xs text-muted-foreground">
         {descriptor.description}
       </span>
+    </div>
+  );
+}
+
+export function ErrorWidget({ causes }: { causes: string }) {
+  return (
+    <div className="rounded-lg border border-border shadow-md p-4">
+      <div className="flex items-center gap-2">
+        <CircleX className="size-4" />
+        Oh, No!
+      </div>
+      <span className="text-muted-foreground text-sm">
+        Can not rendered this widget:
+      </span>
+      <span className="text-destructive text-sm">{causes}</span>
     </div>
   );
 }
@@ -203,34 +219,46 @@ function WidgetLayoutMenu({ id }: { id: string }) {
 }
 
 function WidgetControlHeader({
-  dragConnector,
-  attributes,
-  reorderWidget,
-  findWidget,
+  widget,
+  onDnDStateChanged,
 }: {
-  dragConnector: ConnectDragSource;
-  attributes: WidgetAttributes;
-  reorderWidget: (id: string, atIndex: number) => void;
-  findWidget: (id: string) => { widget: Widget; index: number } | null;
+  widget: Widget;
+  onDnDStateChanged: (state: { isDragging: boolean }) => void;
 }) {
-  const { removeWidget } = useWidgetTreeStore((state) => state);
-  const { showDebug, showPreview } = useUIInspectStore((state) => state);
+  const { attributes, parentId, renderer } = widget;
+  const { widgetId } = attributes;
 
-  const ref = useRef<HTMLDivElement>(null);
+  const { removeWidget, getWidgetWithParentOrder, setWidgetOrder } =
+    useWidgetTreeStore((state) => state);
+  const { showDebug, showPreview } = useUIInspectStore((state) => state);
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  const [dragState, drag] = useDrag<ExistWidgetDnDProps, void, any>({
+    type: "widget",
+    item: { attributes, renderer, originalIndex: 0 },
+    collect: (monitor) => ({
+      isDragging: monitor.isDragging(),
+    }),
+  });
 
   const [, drop] = useDrop<ExistWidgetDnDProps, void, {}>({
     accept: "widget",
     hover: (item) => {
       if (item.descriptor) return;
-      const { id: draggedId } = item.attributes;
-      if (!draggedId || draggedId === attributes.id) return;
-      const result = findWidget(attributes.id);
-      console.log(result);
+      const { widgetId: draggedId } = item.attributes;
+      if (!widget.parentId) return;
+      if (!draggedId || draggedId === widgetId) return;
+      const result = getWidgetWithParentOrder(widgetId);
+      if (!result) return;
+      setWidgetOrder(widget.parentId, draggedId, result.orderAt);
     },
   });
 
-  drop(ref);
-  dragConnector(ref);
+  React.useEffect(() => {
+    onDnDStateChanged(dragState);
+  }, [dragState]);
+
+  drag(drop(ref));
 
   return (
     <div
@@ -241,132 +269,86 @@ function WidgetControlHeader({
       )}
     >
       <GripVertical className="size-3 text-muted-foreground" />
-      <h1 className="text-sm font-medium">{attributes.title}</h1>
+      <h1 className="text-sm font-medium">{widget.attributes.title}</h1>
       <span
         className={cn("text-xs text-muted-foreground", !showDebug && "hidden")}
       >
-        {attributes.id}
+        {widgetId}
       </span>
-      {attributes.id !== "root" && (
+      {widgetId !== "root" && (
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => removeWidget?.(attributes.id)}
+          onClick={() => removeWidget?.(widgetId)}
           disabled={!removeWidget}
         >
           <Trash2 className="size-3 text-muted-foreground" />
         </Button>
       )}
-      <WidgetLayoutMenu id={attributes.id} />
+      <WidgetLayoutMenu id={widgetId} />
     </div>
   );
 }
 
 export default function WidgetWrapper(props: WidgetWrapperProps) {
+  const { renderer } = props;
+
   if (props.descriptor) {
     // Widget is currently describe mode. never initialized widget.
-    return (
-      <WidgetPreview descriptor={props.descriptor} renderer={props.renderer} />
-    );
+    return <WidgetPreview descriptor={props.descriptor} renderer={renderer} />;
   }
 
   // Widget is currently rendered in the canvas. have widget attributes.
-  const { widgets, addWidget, updateWidget, moveWidget } = useWidgetTreeStore(
+  const { getWidget, addWidget, moveWidget } = useWidgetTreeStore(
     (state) => state
   );
+  const { widgetId, layout, className, title } = props.attributes;
+  const [isDragging, setIsDragging] = React.useState(false);
+  const dropRef = React.useRef<HTMLDivElement>(null);
 
-  const { renderer, attributes } = props;
-  const widget = React.useMemo(() => {
-    const { id } = attributes;
-    return widgets[id];
-  }, [widgets, attributes]);
+  const widget = getWidget(props.attributes.widgetId);
+  if (!widget) return <ErrorWidget causes="Widget is not found" />;
 
-  const dropRef = useRef<HTMLDivElement>(null);
-  const dragRef = useRef<HTMLDivElement>(null);
-  const previewRef = useRef<HTMLDivElement>(null);
-
-  const findWidget = React.useCallback(
-    (id: string) => {
-      const widget = widgets[id];
-      const parent = widget.parentId ? widgets[widget.parentId] : null;
-      if (!parent) return null;
-      const widgetAt = parent.childrenId.indexOf(id);
-      return {
-        widget,
-        index: widgetAt,
-      };
-    },
-    [widgets]
-  );
-
-  const reorderWidget = React.useCallback(
-    (id: string, atIndex: number) => {
-      const { widget, index } = findWidget(id) ?? {};
-      if (!widget || !index) return;
-      updateWidget(widget.parentId ?? "", {
-        childrenId: [
-          ...widget.childrenId.slice(0, index),
-          id,
-          ...widget.childrenId.slice(index + 1),
-        ],
-      });
-    },
-    [findWidget, updateWidget]
-  );
-
-  const [{ isDragging }, drag, preview] = useDrag<
+  const [{ isOver, isChildrenOver }, drop] = useDrop<
     ExistWidgetDnDProps,
     void,
     any
   >({
-    type: "widget",
-    item: { attributes, renderer, originalIndex: 0 },
+    accept: "widget",
     collect: (monitor) => ({
-      isDragging: monitor.isDragging(),
+      isOver: !!monitor.isOver({ shallow: true }),
+      isChildrenOver: !!monitor.isOver({ shallow: false }),
     }),
+    drop: (item, monitor) => {
+      if (monitor.didDrop()) return;
+      if (item.descriptor) {
+        addWidget(item.renderer, item.descriptor, widgetId);
+        return;
+      }
+
+      moveWidget(item.attributes.widgetId, widgetId);
+    },
   });
-
-  const [{ isOver, isChildrenOver }, drop] = useDrop<WidgetDnDProps, void, any>(
-    {
-      accept: "widget",
-      collect: (monitor) => ({
-        isOver: !!monitor.isOver({ shallow: true }),
-        isChildrenOver: !!monitor.isOver({ shallow: false }),
-      }),
-      drop: (item, monitor) => {
-        if (monitor.didDrop()) return;
-        if (item.descriptor) {
-          addWidget(item.renderer, item.descriptor, attributes.id);
-          return;
-        }
-
-        const { id } = attributes;
-        moveWidget(item.attributes.id, id);
-      },
-    }
-  );
-  preview(previewRef);
-  drag(dragRef);
   drop(dropRef);
 
   return (
-    <div ref={dropRef} className={cn("flex flex-col flex-1")}>
+    <div
+      key={widgetId}
+      ref={dropRef}
+      className={cn("flex flex-col flex-1", isDragging && "opacity-0")}
+    >
       <WidgetControlHeader
-        dragConnector={drag}
-        attributes={attributes}
-        reorderWidget={reorderWidget}
-        findWidget={findWidget}
+        widget={widget}
+        onDnDStateChanged={(state) => setIsDragging(state.isDragging)}
       />
-      <div className={cn("flex flex-1", isOver && "rounded-lg bg-muted")}>
+      <div className={cn("flex flex-1 rounded-lg", isOver && "bg-muted")}>
         <props.renderer
           className={cn(
-            "transition-all duration-200",
-            isDragging && "rounded-lg bg-muted/20 border border-green-500",
-            isOver && "rounded-lg border-blue-500 border bg-blue-500/10",
+            "transition-all duration-50 rounded-lg",
+            isOver && "border-blue-500 border bg-blue-500/10",
             isChildrenOver && "scale-90"
           )}
-          state={widget}
-          attributes={attributes}
+          {...props.attributes}
         />
       </div>
     </div>

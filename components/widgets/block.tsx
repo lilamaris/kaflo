@@ -6,16 +6,16 @@ import { cn, getLayoutStyle } from "@/lib/utils";
 import { useWidgetTreeStore } from "@/components/providers/widget-tree-store-provider";
 
 import WidgetWrapper from "./widget";
-import { WidgetDescriptor, WidgetRenderProps } from "@/lib/type";
+import { WidgetDescriptor, WidgetRenderAttributes } from "@/lib/type";
 
-export function Block(props: WidgetRenderProps) {
-  const { attributes, className = "" } = props;
+export function Block(props: WidgetRenderAttributes) {
+  const { widgetId, layout, className = "" } = props;
 
   const { widgets } = useWidgetTreeStore((state) => state);
 
   const children = React.useMemo(() => {
-    if (!widgets[attributes.id]) return null;
-    const childrenInScope = widgets[attributes.id].childrenId;
+    if (!widgets[widgetId]) return null;
+    const childrenInScope = widgets[widgetId].childrenId;
     return childrenInScope.map((childId) => {
       const child = widgets[childId];
       return (
@@ -26,17 +26,13 @@ export function Block(props: WidgetRenderProps) {
         />
       );
     });
-  }, [widgets, attributes.id]);
+  }, [widgets, widgetId]);
 
   return (
     <div
       className={cn(
         "relative flex flex-1 border-border border rounded-lg shadow-md p-4 pt-8",
-        getLayoutStyle(
-          attributes.layout.direction,
-          attributes.layout.justify,
-          attributes.layout.align
-        ),
+        getLayoutStyle(layout.direction, layout.justify, layout.align),
         className
       )}
     >

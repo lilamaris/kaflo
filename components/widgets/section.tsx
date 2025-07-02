@@ -1,43 +1,37 @@
 import * as React from "react";
 
-import { WidgetDescriptor, WidgetRenderProps } from "@/lib/type";
+import { WidgetDescriptor, WidgetRenderAttributes } from "@/lib/type";
 import { cn, getLayoutStyle } from "@/lib/utils";
 import { LayoutPanelLeft } from "lucide-react";
 import { useWidgetTreeStore } from "../providers/widget-tree-store-provider";
 import WidgetWrapper from "./widget";
+import { Label } from "../ui/label";
 
-export function Section(props: WidgetRenderProps) {
-  const { attributes, className = "" } = props;
-  const { widgets } = useWidgetTreeStore((state) => state);
+export function Section(props: WidgetRenderAttributes) {
+  const { widgetId, layout, className = "" } = props;
+  const { getWidget } = useWidgetTreeStore((state) => state);
 
-  const children = React.useMemo(() => {
-    if (!widgets[attributes.id]) return null;
-    const childrenInScope = widgets[attributes.id].childrenId;
-    return childrenInScope.map((childId) => {
-      const child = widgets[childId];
-      return (
-        <WidgetWrapper
-          renderer={child.renderer}
-          attributes={child.attributes}
-          key={childId}
-        />
-      );
-    });
-  }, [widgets, attributes.id]);
+  const childrenWidgets = React.useMemo(() => {
+    const widget = getWidget(props.widgetId);
+    const childrenIds = widget?.childrenId ?? [];
+    return childrenIds.map((id) => getWidget(id)).filter((widget) => !!widget);
+  }, [getWidget, props]);
 
   return (
     <div
       className={cn(
         "flex flex-1 gap-8",
-        getLayoutStyle(
-          attributes.layout.direction,
-          attributes.layout.justify,
-          attributes.layout.align
-        ),
+        getLayoutStyle(layout.direction, layout.justify, layout.align),
         className
       )}
     >
-      {children}
+      {childrenWidgets.map(({ attributes, renderer }) => (
+        <WidgetWrapper
+          key={attributes.widgetId}
+          renderer={renderer}
+          attributes={attributes}
+        />
+      ))}
     </div>
   );
 }
